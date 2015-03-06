@@ -69,8 +69,6 @@ $(function() {
 			this.rectangle = new Rectangle(new Vector(20,20), 40, 40);
 
 			this.locateObstacles();
-			//var $kalle = $('.box1')[0];
-			//console.log($kalle.getBoundingClientRect());
 
 			// Start main loop
 			this.update();
@@ -125,17 +123,24 @@ $(function() {
 
 
 
-	function Rectangle (vector, width, height) {
-		this.vector = vector;
+	function Rectangle (position, width, height) {
+		this.position = position;
 		this.width = width;
 		this.height = height;
+
+		this.maxVelocity = 1.0;
+		this.gravity = 0.21875;
+
+		this.velocity = new Vector(0,0);
+		this.steering = null;
+
 	}
 
 	Rectangle.prototype.draw = function(context) {
 		context.save();
 
 		context.beginPath();
-		context.rect(this.vector.x, this.vector.y, this.width, this.height);
+		context.rect(this.position.x, this.position.y, this.width, this.height);
 		context.stroke();
 
 		context.restore();
@@ -143,21 +148,58 @@ $(function() {
 
 	Rectangle.prototype.update = function(game) {
 		if(game.keys[37] == true) {
-			this.vector.x--;
+			this.position.x--;
 		}
 
 		if(game.keys[38] == true){
-			this.vector.y--;
+			this.position.y--;
 		}
 
 		if(game.keys[39] == true){
-			this.vector.x++;
+			this.position.x++;
 		}
 
 		if(game.keys[40] == true){
-			this.vector.y++;
+			this.position.y++;
 		}
+
+		this._collisionDetection(game.obstacles);
+
+		this.velocity.y = this.velocity.y + this.gravity;
+		this.position = this.position.add(this.velocity.truncate(this.maxVelocity));
 	};
+
+	Rectangle.prototype._collisionDetection = function(obstacles) {
+		if(!(obstacles instanceof Array)) {
+			throw "Wrong use of Rectangle._collisionDetection";
+		}
+
+		var thisRectangle = { 
+			top: this.position.y, 
+			left: this.position.x, 
+			width: this.width, 
+			height: this.height 
+		};
+
+		var 
+		obstacles.forEach(function(item) {
+			if(collision(thisRectangle, item)){
+				console.log("hey!!");
+			}
+		});
+	};
+
+	function collision(r1, r2) {
+		if(
+			r1.left < r2.left + r2.width &&
+			r1.left + r1.width > r2.left &&
+			r1.top < r2.top + r2.height &&
+			r1.top + r1.height > r2.top){
+			return true;
+		}
+
+		return false;
+	}
 
 	DOMGame.init();
 });
