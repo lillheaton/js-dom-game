@@ -125,15 +125,21 @@ $(function() {
 
 	function Rectangle (position, width, height) {
 		this.position = position;
+		this.velocity = new Vector(0,0);
+		this.gravity = new Vector(0, 0.21875);
+
 		this.width = width;
 		this.height = height;
+		this.inTheAir = false;
+		this.isJumping = false;
 
-		this.maxVelocity = 1.0;
-		this.gravity = 0.21875;
+		this.maxVelocity = 5.0;
+		//this.gravity = 0.21875;
+		this.maxJumpTime = 0.20;
+		this.jumpLaunchVelocity = 0.5;
+		this.jumpControlPower = 0.14;
 
-		this.velocity = new Vector(0,0);
-		this.steering = null;
-
+		this.jumpTime = 0;
 	}
 
 	Rectangle.prototype.draw = function(context) {
@@ -147,46 +153,93 @@ $(function() {
 	};
 
 	Rectangle.prototype.update = function(game) {
+
+		this._handleCollision(game);
+		this._handleInputs(game);
+		this._handleJump(game)
+
+		// Add base gravity
+		this.velocity = this.velocity.add(this.gravity);
+
+		// Add velocity vector to positon 
+		this.position = this.position.add(this.velocity.truncate(this.maxVelocity));
+	};
+
+	Rectangle.prototype._handleJump = function(game) {
+		if(this.isJumping){
+			this.jumpTime += game.gameTime.elapsedMs;
+
+			if(this.jumpTime > 0.0 && this.jumpTime <= this.maxJumpTime){
+				var y = this.jumpLaunchVelocity * (-1 - Math.pow(this.jumpTime / this.maxJumpTime, this.jumpControlPower));
+				this.velocity = this.velocity.add(new Vector(0, y));
+			}
+			else{
+				this.jumpTime = 0;
+				this.isJumping = false;
+			}
+		} 
+		else{
+			this.jumpTime = 0;
+		}
+	};
+
+	Rectangle.prototype._handleInputs = function(game) {
 		if(game.keys[37] == true) {
 			this.position.x--;
 		}
 
-		if(game.keys[38] == true){
-			this.position.y--;
+		if(game.keys[38] == true && this.inTheAir == false){
+			this.isJumping = true;
 		}
 
 		if(game.keys[39] == true){
 			this.position.x++;
+			
 		}
-
-		if(game.keys[40] == true){
-			this.position.y++;
-		}
-
-		this._collisionDetection(game.obstacles);
-
-		this.velocity.y = this.velocity.y + this.gravity;
-		this.position = this.position.add(this.velocity.truncate(this.maxVelocity));
 	};
 
-	Rectangle.prototype._collisionDetection = function(obstacles) {
-		if(!(obstacles instanceof Array)) {
-			throw "Wrong use of Rectangle._collisionDetection";
-		}
+	Rectangle.prototype._handleCollision = function(game) {
+		var tv = this.velocity.isZero ? new Vector(0,0) : this.velocity.normalized();
+		tv = tv.scale(0.21875 * this.velocity.length() / this.maxVelocity);
 
-		var thisRectangle = { 
-			top: this.position.y, 
-			left: this.position.x, 
+		var ahead = this.position.add(tv);
+
+		var aheadRectangle = {
+			top: ahead.y, 
+			left: ahead.x, 
 			width: this.width, 
 			height: this.height 
 		};
 
-		var 
-		obstacles.forEach(function(item) {
-			if(collision(thisRectangle, item)){
-				console.log("hey!!");
+		var collisions = checkCollisions(aheadRectangle, game.obstacles);
+
+		if(collisions.length > 0){
+			this.inTheAir = false;
+
+			// Clear velocity downforce
+			this.gravity.y = 0;
+			this.velocity.y = 0;
+		}else{
+			this.gravity.y = 0.21875;
+			this.inTheAir = true;
+		}
+	};
+
+
+	// ===============================
+	// ============ Utils ============
+	// ===============================
+
+	function checkCollisions(rectangle, obstacles){
+		var obstaclesFound = [];
+
+		obstacles.forEach(function(obstacle) {
+			if(collision(rectangle, obstacle)){
+				obstaclesFound.push(obstacle);
 			}
 		});
+
+		return obstaclesFound;
 	};
 
 	function collision(r1, r2) {
@@ -199,7 +252,7 @@ $(function() {
 		}
 
 		return false;
-	}
+	};
 
 	DOMGame.init();
 });
