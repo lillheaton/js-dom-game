@@ -133,12 +133,15 @@ $(function() {
 		this.inTheAir = false;
 		this.isJumping = false;
 
-		this.maxVelocity = 5.0;
-		//this.gravity = 0.21875;
+		this.movement = 0;
+		this.movementAccaleration = 1.5;
+		this.maxVelocity = 5.0;		
+		this.groundDragFactor = 0.48;
+
+		// Jump factors 
 		this.maxJumpTime = 0.20;
 		this.jumpLaunchVelocity = 0.5;
 		this.jumpControlPower = 0.14;
-
 		this.jumpTime = 0;
 	}
 
@@ -153,21 +156,30 @@ $(function() {
 	};
 
 	Rectangle.prototype.update = function(game) {
-
-		this._handleCollision(game);
 		this._handleInputs(game);
-		this._handleJump(game)
-
-		// Add base gravity
-		this.velocity = this.velocity.add(this.gravity);
-
-		// Add velocity vector to positon 
-		this.position = this.position.add(this.velocity.truncate(this.maxVelocity));
+		this._handlePyshics(game.gameTime);
+		this._handleCollision(game.obstacles);
 	};
 
-	Rectangle.prototype._handleJump = function(game) {
+	Rectangle.prototype._handlePyshics = function(gameTime) {
+		this._DoJump(gameTime);
+
+		// Horizontal pyshics
+		this.velocity.x += this.movement * this.movementAccaleration;
+
+		// Todo add airDrag
+		this.velocity.x *= this.groundDragFactor;
+
+		// Add base gravity
+		this.velocity = this.velocity.add(this.gravity).truncate(this.maxVelocity);
+
+		// Add velocity vector to positon 
+		this.position = this.position.add(this.velocity);
+	};
+
+	Rectangle.prototype._DoJump = function(gameTime) {
 		if(this.isJumping){
-			this.jumpTime += game.gameTime.elapsedMs;
+			this.jumpTime += gameTime.elapsedMs;
 
 			if(this.jumpTime > 0.0 && this.jumpTime <= this.maxJumpTime){
 				var y = this.jumpLaunchVelocity * (-1 - Math.pow(this.jumpTime / this.maxJumpTime, this.jumpControlPower));
@@ -185,7 +197,7 @@ $(function() {
 
 	Rectangle.prototype._handleInputs = function(game) {
 		if(game.keys[37] == true) {
-			this.position.x--;
+			this.movement = -1;
 		}
 
 		if(game.keys[38] == true && this.inTheAir == false){
@@ -193,34 +205,54 @@ $(function() {
 		}
 
 		if(game.keys[39] == true){
-			this.position.x++;
-			
+			this.movement = 1;
 		}
 	};
 
-	Rectangle.prototype._handleCollision = function(game) {
-		var tv = this.velocity.isZero ? new Vector(0,0) : this.velocity.normalized();
-		tv = tv.scale(0.21875 * this.velocity.length() / this.maxVelocity);
-
-		var ahead = this.position.add(tv);
-
+	Rectangle.prototype._handleCollision = function(obstacles) {
 		var aheadRectangle = {
-			top: ahead.y, 
-			left: ahead.x, 
+			top: this.position.y, 
+			left: this.position.x, 
 			width: this.width, 
 			height: this.height 
 		};
 
-		var collisions = checkCollisions(aheadRectangle, game.obstacles);
+		var collisions = checkCollisions(aheadRectangle, obstacles);
 
 		if(collisions.length > 0){
 			this.inTheAir = false;
 
-			// Clear velocity downforce
-			this.gravity.y = 0;
-			this.velocity.y = 0;
+			var that = this;
+			collisions.forEach(function(obstacle){
+
+				var diffX = (obstacle.left + obstacle.width / 2) - (that.position.x + that.width / 2);
+				var diffY = (obstacle.top + obstacle.height / 2) - (that.position.y + that.height / 2);
+
+				// Vertical collision
+				if(Math.abs(diffX) > Math.abs(diffY)){
+					// Obstacle located under
+					if(diffY > 0 && that.velocity.y > 0){
+						console.log("collision under");
+						that.position.y = obstacle.top - that.height;
+					}
+					else{
+						console.log("collision to the top");
+						that.position.y = obstacle.top;
+					}
+				}
+				// Horizontal collision
+				else{
+					if(diffX > 0 && that.velocity.x > 0){
+						console.log("collision to the right");
+						that.position.x = obstacle.left - that.width;
+					}
+					else{
+						console.log("collision to the left");	
+						that.position.x = obstacle.left;			
+					}
+				}
+			});
 		}else{
-			this.gravity.y = 0.21875;
 			this.inTheAir = true;
 		}
 	};
