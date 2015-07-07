@@ -1,0 +1,6 @@
+[submodule "submodules/classy"]
+	path = submodules/classy
+	url = https://github.com/HektorW/classy.js.git
+[submodule "submodules/events"]
+	path = submodules/events
+	url = git@github.com:HektorW/events.git
