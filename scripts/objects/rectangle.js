@@ -1,7 +1,9 @@
 define([
-	'classy'
+	'classy',
+	'victor'
 ], function(
-	Classy
+	Classy,
+	Vector
 ){
 
 	var Rectangle = Classy.extend({
@@ -21,17 +23,22 @@ define([
 	    	ctx.save();
 
 			ctx.beginPath();
-			ctx.rect(this.position.x, this.position.y, this.width, this.height);
+			ctx.fillStyle = "red";
+			ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
 			ctx.stroke();
 
 			ctx.restore();
 	    },
 
-	    collision: function(rectangle){
-			if (this.left < rectangle.left + rectangle.width &&
-				this.left + this.width > rectangle.left &&
-				this.top < rectangle.top + rectangle.height &&
-				this.top + this.height > rectangle.top) {
+	    center: function(){
+	    	return new Vector(this.position.x + this.width / 2, this.position.y + this.height / 2);
+	    },
+
+	    collide: function(rectangle){
+			if (this.position.x < rectangle.position.x + rectangle.width &&
+				this.position.x + this.width > rectangle.position.x &&
+				this.position.y < rectangle.position.y + rectangle.height &&
+				this.position.y + this.height > rectangle.position.y) {
 					return true;
 			}
 			return false;

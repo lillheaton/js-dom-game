@@ -1,25 +1,31 @@
 define([
-	'underscore',
+	'jquery',	
 	'events',
 	'classy',
 
 	'game',
-	'player'
+	'player',
+	'objects/rectangle',
+	'victor'
 ], function(
-	_,
+	$,
 	Events,
 	Classy,
 
 	Game,
-	Player
+	Player,
+	Rectangle,
+	Vector
 ){
 
 	var Platfy = Game.extend({
 
 		player: null,
+		obstacles: [],
 
 		// @constructor
 		__init__: function() {
+			this.locateObstacles();
 			this.player = new Player(this);
 			this.supr();
 		},
@@ -32,6 +38,15 @@ define([
 			// Clear canvas
 			this.ctx.clearRect(0, 0, this._width, this._height);
 			this.player.draw(time, ctx);
+		},
+
+		locateObstacles: function() {
+			var $obs = $('.obstacle');
+			var that = this;
+			$obs.each(function(index, element){
+				var domRect = element.getBoundingClientRect();
+				that.obstacles.push(new Rectangle(new Vector(domRect.left, domRect.top), domRect.width, domRect.height));
+			})
 		}
 	});
 
